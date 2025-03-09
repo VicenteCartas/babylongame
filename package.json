@@ -1,0 +1,22 @@
+{
+  "name": "babylon-pong",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@babylonjs/core": "^7.52.2",
+    "@babylonjs/inspector": "^7.52.2",
+    "typescript": "~5.7.2",
+    "vite": "^6.2.0",
+    "vite-plugin-wasm": "^3.4.1"
+  },
+  "dependencies": {
+    "@babylonjs/gui": "^7.52.2",
+    "@babylonjs/havok": "^1.3.10"
+  }
+}
