@@ -1,5 +1,5 @@
-import { Color3, Mesh, MeshBuilder, Scene, StandardMaterial, Texture, Vector3 } from "@babylonjs/core";
-import { IGameEntity, IGameState } from "../types";
+import { Color3, Mesh, MeshBuilder, PhysicsAggregate, PhysicsMotionType, PhysicsShapeType, Scene, StandardMaterial, Texture, Vector3 } from "@babylonjs/core";
+import { BoundariesMass, IGameEntity, IGameState } from "../types";
 
 // Represents the table where the game takes place
 export class PongTable implements IGameEntity {
@@ -32,7 +32,8 @@ export class PongTable implements IGameEntity {
         const groundTexture = new Texture('../logo.png', this._scene);
         groundMaterial.diffuseTexture = groundTexture;
         this._groundMesh.material = groundMaterial;
-        this._groundMesh.checkCollisions = false;
+        const groundAggregate = new PhysicsAggregate(this._groundMesh, PhysicsShapeType.BOX, { mass: 0, friction: 0 }, this._scene);
+        groundAggregate.body.setMotionType(PhysicsMotionType.STATIC);
 
         // Top boundaries
         const boundariesTexture = new Texture('../red-blue.png', this._scene, { samplingMode: Texture.CLAMP_ADDRESSMODE});
@@ -48,6 +49,8 @@ export class PongTable implements IGameEntity {
             this._scene);
         this._topMesh.position = new Vector3(0, 0.5, 4.75);
         this._topMesh.material = boundariesMaterial;
+        const topAggregate = new PhysicsAggregate(this._topMesh, PhysicsShapeType.BOX, { mass: BoundariesMass, restitution: 1, friction: 0 }, this._scene);
+        topAggregate.body.setMotionType(PhysicsMotionType.STATIC);
 
         this._bottomMesh = MeshBuilder.CreateBox(
             'bottom', {
@@ -59,6 +62,8 @@ export class PongTable implements IGameEntity {
             this._scene);
         this._bottomMesh.position = new Vector3(0, 0.5, -4.75);
         this._bottomMesh.material = boundariesMaterial;
+        const bottomAggregate = new PhysicsAggregate(this._bottomMesh, PhysicsShapeType.BOX, { mass: BoundariesMass, restitution: 1, friction: 0 }, this._scene);
+        topAggregate.body.setMotionType(PhysicsMotionType.STATIC);
 
         // Side goals
         this._leftMesh = MeshBuilder.CreateBox(

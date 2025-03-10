@@ -24,8 +24,11 @@ export enum BallState {
     Moving = 3
 }
 
+export const BoundariesMass = 100000;
+export const PaddleMass = 10000;
+export const BallMass = 0.1;
 export const PlayerSpeed = 0.1;
-export const BallInitialSpeed = 0.1;
+export const BallInitialSpeed = 1;
 
 // Shared game state 
 export interface IGameState {

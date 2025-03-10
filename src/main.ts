@@ -2,7 +2,7 @@ import * as BABYLON from '@babylonjs/core';
 import { PongGame } from './pongGame';
 import "@babylonjs/core/Debug/debugLayer";
 import "@babylonjs/inspector";
-import { GameState } from './types';
+import HavokPhysics from '@babylonjs/havok';
 
 export class Application {
   private canvas: HTMLCanvasElement;
@@ -21,7 +21,10 @@ export class Application {
 
   public async initialize() {
     await BABYLON.CreateAudioEngineAsync();
-    this.game = new PongGame(this.engine, this.canvas);
+    const havokInstance = await HavokPhysics();
+    const havokPlugin = new BABYLON.HavokPlugin(true, havokInstance);
+
+    this.game = new PongGame(this.engine, havokPlugin);
     await this.game.startState();
     this.addEventListeners();
 

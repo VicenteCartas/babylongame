@@ -1,16 +1,15 @@
-import { Color4, CreateSoundAsync, CreateStreamingSoundAsync, DirectionalLight, Engine, FreeCamera, HavokPlugin, Scene, StaticSound, StreamingSound, TextureBlock, UniversalCamera, Vector3 } from "@babylonjs/core";
+import { Color4, CreateSoundAsync, CreateStreamingSoundAsync, DirectionalLight, Engine, FreeCamera, HavokPlugin, Scene, StaticSound, StreamingSound, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { AdvancedDynamicTexture, Button, Control, Grid, StackPanel, TextBlock, Image } from "@babylonjs/gui";
 import { PongTable } from "./entities/pongTable";
 import { Player } from "./entities/player";
 import { Ball } from "./entities/ball";
 import { PlayerSide, IGameState, GameState, IGameScene } from "./types";
-import HavokPhysics from "@babylonjs/havok";
 import { StartGameScene } from "./scenes/startGameScene";
 import { EndGameScene } from "./scenes/endGameScene";
 
 export class PongGame implements IGameState {
     private _engine: Engine;
-    private canvas: HTMLCanvasElement;
+    private _havok: HavokPlugin;
     private _activeScene: Scene | undefined;
     private environment: PongTable | undefined;
     private leftPlayer: Player | undefined;
@@ -25,9 +24,9 @@ export class PongGame implements IGameState {
     private _activeGameScene: IGameScene | undefined;
     private _scenes: IGameScene[];
 
-    public constructor(engine: Engine, canvas: HTMLCanvasElement) {
+    public constructor(engine: Engine, havok: HavokPlugin) {
         this._engine = engine;
-        this.canvas = canvas;
+        this._havok = havok;
         this.leftPlayerScore = 0;
         this.rightPlayerScore = 0;
         this.leftScoreTextBox = new TextBlock('leftScore', this.leftPlayerScore.toString());
@@ -76,7 +75,7 @@ export class PongGame implements IGameState {
         splash.stretch = Image.STRETCH_NONE;
         stack.addControl(splash);
 
-        const playButton = Button.CreateSimpleButton('playButton', 'Play');
+        const playButton = Button.CreateSimpleButton('playButton', 'Play with Havok');
         playButton.width = 0.2;
         playButton.height = '40px';
         playButton.color = 'white';
@@ -112,6 +111,7 @@ export class PongGame implements IGameState {
 
         // The new scene for the Game state
         const scene = new Scene(this._engine);
+        scene.enablePhysics(new Vector3(0, -9.8, 0), this._havok);
         scene.clearColor = new Color4(0.15, 0.15, 0.15, 1);
         const light = new DirectionalLight('globalLight', new Vector3(0, -1, 0), scene);
         light.intensity = 0.7;

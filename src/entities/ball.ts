@@ -1,14 +1,14 @@
-import { ActionManager, Color3, CreateSoundAsync, ExecuteCodeAction, IAction, Mesh, MeshBuilder, Nullable, Scalar, Scene, StandardMaterial, StaticSound, Vector3 } from "@babylonjs/core";
-import { BallInitialSpeed, BallState, IGameState, PlayerSide } from "../types";
+import { ActionManager, Color3, CreateSoundAsync, ExecuteCodeAction, IAction, Mesh, MeshBuilder, Nullable, PhysicsAggregate, PhysicsShapeType, Scalar, Scene, StandardMaterial, StaticSound, Vector3 } from "@babylonjs/core";
+import { BallInitialSpeed, BallMass, BallState, IGameState, PlayerSide } from "../types";
 
 // Represents the ball in the game
 export class Ball {
     private _scene: Scene;
     private _mesh: Mesh | undefined;
+    private _aggregate: PhysicsAggregate | undefined;
     private _ballState: BallState;
     private _direction: Vector3; // Reuse the vector to avoid recreating it every update
     private _gameState: IGameState | undefined;
-    private _bounces: number;
     private _hitSound: StaticSound | undefined;
     private _goalSound: StaticSound | undefined;
     private _leftPaddleAction: Nullable<IAction>;
@@ -18,7 +18,6 @@ export class Ball {
         this._scene = scene;
         this._ballState = BallState.Middle;
         this._direction = Vector3.Zero();
-        this._bounces = 0;
         this._leftPaddleAction = null;
         this._rightPaddleAction = null;
     }
@@ -29,27 +28,97 @@ export class Ball {
 
     public async load(state: IGameState): Promise<void> {
         this._gameState = state;
-        this._mesh = MeshBuilder.CreateSphere('ball', {
-            diameter: 0.5
-        }, this._scene);
-        this._mesh.position = new Vector3(0, 0.25, 0);
-        const ballMaterial = new StandardMaterial('ballMaterial');
-        ballMaterial.diffuseColor = Color3.Gray();
-        this._mesh.material = ballMaterial;
-
+        
         this._hitSound = await CreateSoundAsync("hit", "../hit.mp3");
         this._hitSound.volume = 0.2;
         this._goalSound = await CreateSoundAsync("goal", "../goal.mp3");
         this._goalSound.volume = 1;
 
+        this.createBall();
+
         window.addEventListener('keydown', (ev) => {
-            if (this._mesh) {
+            if (this._mesh && this._aggregate) {
                 if (ev.code === 'Space' && this._ballState !== BallState.Moving) {
                     this.generateStartAngle();
+                    this._aggregate.body.applyImpulse(this._direction, this._mesh.getAbsolutePosition());
+                    this._aggregate.body.setLinearDamping(0);
+                    this._aggregate.body.setAngularDamping(0);
                     this._ballState = BallState.Moving;
                 }
             }
         });
+    }
+
+    // Paddle meshes can be recreated, so we ned to re-register the actions to calculate the collisions
+    public updatePaddleActions(): void {
+        if (this._mesh && this._mesh.actionManager) {
+            if (this._leftPaddleAction) {
+                this._mesh.actionManager.unregisterAction(this._leftPaddleAction);
+            }
+
+            if (this._rightPaddleAction) {
+                this._mesh.actionManager.unregisterAction(this._rightPaddleAction);
+            }
+
+            this._leftPaddleAction = this._mesh.actionManager.registerAction(new ExecuteCodeAction({
+                trigger: ActionManager.OnIntersectionEnterTrigger,
+                parameter: this._scene.getMeshByName("leftPaddle")
+            }, async () => {
+                this._hitSound?.play();
+            }, undefined));
+            this._rightPaddleAction = this._mesh.actionManager.registerAction(new ExecuteCodeAction({
+                trigger: ActionManager.OnIntersectionEnterTrigger,
+                parameter: this._scene.getMeshByName("rightPaddle")
+            }, async () => {
+                this._hitSound?.play();
+            }, undefined));
+        }
+    }
+
+    public updateZ(newZ: number) : void {
+        if (this._mesh) {
+            this._mesh.position.z = newZ;
+        }
+    }
+
+    public reset(sideScored: PlayerSide): void {
+        if (sideScored === PlayerSide.Left) {
+            this._ballState = BallState.Right;
+        } else {
+            this._ballState = BallState.Left;
+        }
+
+        if (this._mesh && this._aggregate) {
+            this._mesh.dispose();
+            this._aggregate.dispose();
+            this.createBall();
+        }
+    }
+
+    // Function to run every game update
+    public update(): void {
+    }
+
+    private createBall() : void {
+        this._mesh = MeshBuilder.CreateSphere('ball', {
+            diameter: 0.5
+        }, this._scene);
+
+        let xPosition = 0;
+        if (this.ballState === BallState.Left) {
+            xPosition = -8.249;
+        }
+
+        if (this.ballState === BallState.Right) {
+            xPosition = 8.249;
+        }
+
+        this._mesh.position = new Vector3(xPosition, 0.25, 0);
+        const ballMaterial = new StandardMaterial('ballMaterial');
+        ballMaterial.diffuseColor = Color3.Gray();
+        this._mesh.material = ballMaterial;
+        this._aggregate = new PhysicsAggregate(this._mesh, PhysicsShapeType.SPHERE, { mass: BallMass, restitution: 1, friction: 0 }, this._scene);
+        this._aggregate.body.disablePreStep = false;
 
         //Register events for the ball
         this._mesh.actionManager = new ActionManager(this._scene);
@@ -72,86 +141,7 @@ export class Ball {
             }
         }, undefined));
 
-        this.registerPaddleActions();
-    }
-
-    // Paddle meshes can be recreated, so we ned to re-register the actions to calculate the collisions
-    public registerPaddleActions(): void {
-        if (this._mesh && this._mesh.actionManager) {
-            if (this._leftPaddleAction) {
-                this._mesh.actionManager.unregisterAction(this._leftPaddleAction);
-            }
-
-            if (this._rightPaddleAction) {
-                this._mesh.actionManager.unregisterAction(this._rightPaddleAction);
-            }
-
-            this._leftPaddleAction = this._mesh.actionManager.registerAction(new ExecuteCodeAction({
-                trigger: ActionManager.OnIntersectionEnterTrigger,
-                parameter: this._scene.getMeshByName("leftPaddle")
-            }, async () => {
-                this._hitSound?.play();
-                this._bounces++;
-                this._direction.x *= -1 * (1 + this._bounces / 100);
-            }, undefined));
-            this._rightPaddleAction = this._mesh.actionManager.registerAction(new ExecuteCodeAction({
-                trigger: ActionManager.OnIntersectionEnterTrigger,
-                parameter: this._scene.getMeshByName("rightPaddle")
-            }, async () => {
-                this._hitSound?.play();
-                this._bounces++;
-                this._direction.x *= -1 * (1 + this._bounces / 100);
-            }, undefined));
-        }
-    }
-
-    public updateZ(newZ: number) : void {
-        if (this._mesh) {
-            this._mesh.position.z = newZ;
-        }
-    }
-
-    public reset(sideScored: PlayerSide): void {
-        if (this._mesh) {
-            this._bounces = 0;
-            this._direction.x = 0;
-            this._direction.y = 0;
-            this._direction.z = 0;
-    
-            if (sideScored === PlayerSide.Left) {
-                this._ballState = BallState.Right;
-                this._mesh.position.x = 8.249; // This is to avoid a "collision" on reset
-                this._mesh.position.y = 0.25;
-                this._mesh.position.z = 0;            
-            } else {
-                this._ballState = BallState.Left;
-                this._mesh.position.x = -8.249; // This is to avoid a "collision" on reset
-                this._mesh.position.y = 0.25;
-                this._mesh.position.z = 0;   
-            }
-        }
-    }
-
-    // Function to run every game update
-    public update(): void {
-        if (this._ballState !== BallState.Moving) {
-            return;
-        }
-
-        if (this._mesh) {
-            this._mesh.moveWithCollisions(this._direction);
-
-            // Bounce the wall if it "hits" the top or bottom borders
-            if (this._mesh.position.z > 4.25) {
-                this._mesh.position.z = 4.25;
-                this._direction.z *= -1;
-            }
-
-            if (this._mesh.position.z < -4.25) {
-                this._mesh.position.z = -4.25;
-                this._direction.z *= -1;
-            }
-        }
+        this.updatePaddleActions();
     }
 
     private generateStartAngle() : void {

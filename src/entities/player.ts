@@ -1,5 +1,5 @@
-import { Color3, Mesh, MeshBuilder, Scene, StandardMaterial, Vector3 } from "@babylonjs/core";
-import { BallState, PaddleDirection, PlayerSpeed, PlayerSide, IGameState, IGameEntity } from "../types";
+import { Color3, Mesh, MeshBuilder, PhysicsAggregate, PhysicsMotionType, PhysicsShapeType, Scene, StandardMaterial, Vector3 } from "@babylonjs/core";
+import { BallState, PaddleDirection, PlayerSpeed, PlayerSide, IGameState, IGameEntity, PaddleMass } from "../types";
 
 export type PlayerCreationOptions = {
     upKey: string;
@@ -13,6 +13,7 @@ export class Player implements IGameEntity {
     private _loaded: boolean;
     private _options: PlayerCreationOptions
     private _mesh: Mesh | undefined;
+    private _aggregate: PhysicsAggregate | undefined;
     private _moveDirection: PaddleDirection;
     private _movementVector: Vector3; // Reuse the vector to avoid recreating it every update
     private _state: IGameState | undefined;
@@ -43,16 +44,25 @@ export class Player implements IGameEntity {
         window.addEventListener('keydown', (ev) => {
             if (ev.code === this._options.upKey) {
                 this._moveDirection = PaddleDirection.Up;
+                if (this._mesh && this._aggregate) {
+                    this._aggregate.body.applyImpulse(new Vector3(0, 0, 1), this._mesh.getAbsolutePosition());
+                }
             }
 
             if (ev.code === this._options.downKey) {
                 this._moveDirection = PaddleDirection.Down;
+                if (this._mesh && this._aggregate) {
+                    this._aggregate.body.applyImpulse(new Vector3(0, 0, -1), this._mesh.getAbsolutePosition());
+                }
             }
         });
 
         window.addEventListener('keyup', (ev) => {
             if (ev.code === this._options.upKey || ev.code === this._options.downKey) {
                 this._moveDirection = PaddleDirection.None;
+                if (this._mesh && this._aggregate) {
+                    this._aggregate.body.applyImpulse(new Vector3(0, 0, 0), this._mesh.getAbsolutePosition());
+                }
             }
         });
 
@@ -60,13 +70,13 @@ export class Player implements IGameEntity {
             if (ev.code === 'Digit1' && this._options.side === PlayerSide.Left) {
                 this._currentModifier = (this._currentModifier + 1) % this._modifiers.length;
                 this.createPaddle();
-                this._state?.gameBall?.registerPaddleActions();
+                this._state?.gameBall?.updatePaddleActions();
             }
 
             if (ev.code === 'Digit2' && this._options.side === PlayerSide.Right) {
                 this._currentModifier = (this._currentModifier + 1) % this._modifiers.length;
                 this.createPaddle();
-                this._state?.gameBall?.registerPaddleActions();
+                this._state?.gameBall?.updatePaddleActions();
             }
         });
 
@@ -96,7 +106,7 @@ export class Player implements IGameEntity {
                 break;
         }
 
-        if (this._mesh) {
+        if (this._mesh && this._aggregate) {
             this._mesh.moveWithCollisions(this._movementVector);
             if (this._mesh.position.z > 4.5 - (0.5 * this._paddleSize * this._modifiers[this._currentModifier])) {
                 this._mesh.position.z = 4.5 - (0.5 * this._paddleSize * this._modifiers[this._currentModifier]);
@@ -123,9 +133,10 @@ export class Player implements IGameEntity {
 
     private createPaddle(): void {
         let zPosition = 0;
-        if (this._mesh) {
+        if (this._mesh && this._aggregate) {
             zPosition = this._mesh.position.z;
             this._mesh.dispose();
+            this._aggregate.dispose();
         }
 
         const name = this._options.side === PlayerSide.Left ? 'leftPaddle' : 'rightPaddle';
@@ -142,5 +153,8 @@ export class Player implements IGameEntity {
         const paddleMaterial = new StandardMaterial('paddleMaterial');
         paddleMaterial.diffuseColor = this._options.side === PlayerSide.Left ? Color3.Red() : Color3.Blue();
         this._mesh.material = paddleMaterial;
+        this._aggregate = new PhysicsAggregate(this._mesh, PhysicsShapeType.BOX, { mass: PaddleMass, restitution: 1, friction: 0 }, this._scene);
+        this._aggregate.body.setMotionType(PhysicsMotionType.STATIC);
+        this._aggregate.body.disablePreStep = false;
     }
 }
