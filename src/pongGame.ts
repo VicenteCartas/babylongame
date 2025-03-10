@@ -52,7 +52,7 @@ export class PongGame implements IGameState {
 
         // The new scene for the Start state
         const scene = new Scene(this._engine);
-        scene.clearColor = new Color4(0, 0, 0, 1);
+        scene.clearColor = new Color4(0.15, 0.15, 0.15, 1);
         const camera = new FreeCamera('guiCamera', Vector3.Zero(), scene);
         camera.setTarget(Vector3.Zero());
 
@@ -112,17 +112,14 @@ export class PongGame implements IGameState {
 
         // The new scene for the Game state
         const scene = new Scene(this._engine);
-        scene.clearColor = new Color4(0, 0, 0, 1);
+        scene.clearColor = new Color4(0.15, 0.15, 0.15, 1);
         const light = new DirectionalLight('globalLight', new Vector3(0, -1, 0), scene);
+        light.intensity = 0.7;
         const camera = new UniversalCamera('gameCamera', new Vector3(0, 16, 0.5), scene);
         camera.setTarget(new Vector3(0, 0, 0.5));
         camera.rotation.y = 0;
         // camera.attachControl(); // For debugging if needed
         // camera.inputs.addMouseWheel();
-
-        // Initialize physics -> check forums to fix WASM issue
-        // const havokInstance = await HavokPhysics();
-        // const havokPlugin = new HavokPlugin(true, havokInstance);
 
         // Music
         this._startSound = await CreateSoundAsync("start", "../start.mp3", { autoplay: true });
@@ -208,7 +205,7 @@ export class PongGame implements IGameState {
         
         // The new scene for the Start state
         const scene = new Scene(this._engine);
-        scene.clearColor = new Color4(0, 0, 0, 1);
+        scene.clearColor = new Color4(0.15, 0.15, 0.15, 1);
         const camera = new FreeCamera('guiCamera', Vector3.Zero(), scene);
         camera.setTarget(Vector3.Zero());
 

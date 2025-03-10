@@ -45,21 +45,7 @@ export class Ball {
         window.addEventListener('keydown', (ev) => {
             if (this._mesh) {
                 if (ev.code === 'Space' && this._ballState !== BallState.Moving) {
-                    const radians = Scalar.NormalizeRadians(Math.random() * 360.0);
-                    this._direction.z = Math.sin(radians) * BallInitialSpeed;
-                    
-                    if (this._ballState === BallState.Middle){
-                        this._direction.x = Math.cos(radians) * BallInitialSpeed;
-                    }
-                    if (this._ballState === BallState.Left) {
-                        this._direction.x = Math.cos(radians) * BallInitialSpeed;
-                        this._direction.x = Math.max(this._direction.x, this._direction.x * -1);
-                    }
-                    if (this._ballState === BallState.Right) {
-                        this._direction.x = Math.cos(radians) * BallInitialSpeed;
-                        this._direction.x = Math.min(this._direction.x, this._direction.x * -1);
-                    }
-
+                    this.generateStartAngle();
                     this._ballState = BallState.Moving;
                 }
             }
@@ -167,5 +153,50 @@ export class Ball {
             }
         }
     }
-}
 
+    private generateStartAngle() : void {
+        let angle = Math.random() * 360.0;
+        while (!this.isInteresting(angle)) {
+            angle = Math.random() * 360.0;
+        }
+
+        const radians = angle * Math.PI / 180;
+
+        this._direction.x = Math.cos(radians) * BallInitialSpeed;
+        this._direction.z = Math.sin(radians) * BallInitialSpeed;
+    }
+
+    private isInteresting(angle: number) : boolean {
+        if (this._ballState === BallState.Middle) {
+            if (angle <= 50) {
+                return true;
+            }
+    
+            if (angle >= 130 && angle <= 230) { 
+                return true;
+            }
+    
+            if (angle >= 310) {
+                return true;
+            }
+        }
+
+        if (this._ballState === BallState.Left) {
+            if (angle <= 50) {
+                return true;
+            }
+    
+            if (angle >= 310) {
+                return true;
+            }
+        }
+
+        if (this._ballState === BallState.Right) {
+            if (angle >= 130 && angle <= 230) { 
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
